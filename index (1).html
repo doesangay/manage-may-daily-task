@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskFlow · Pro Edition</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #f3f5f9;
+            --text-color: #1c2434;
+            --card-bg: #ffffff;
+            --border-color: #e4e8f1;
+            --text-muted: #6b7690;
+            --btn-bg: white;
+            --btn-border: #d8deeb;
+            --input-bg: #f8fafc;
+            --primary: #4338ca;
+            --primary-hover: #372ba3;
+            --accent: #0d9488;
+            --low: #6b7690;
+            --medium: #b3760f;
+            --high: #b3261e;
+            --shadow-sm: 0 1px 3px rgba(20, 30, 60, 0.06);
+            --shadow-md: 0 8px 24px rgba(20, 30, 60, 0.08);
+        }
+        body.dark-mode {
+            --bg-color: #0e1320; --text-color: #eef1f8;
+            --card-bg: #171d2e; --border-color: #2a3348;
+            --text-muted: #8a93ac; --btn-bg: #1c2436; --btn-border: #313c56;
+            --input-bg: #10151f; --primary: #7c74e8; --primary-hover: #918af0;
+            --accent: #2dd4bf;
+        }
+        * { margin:0; padding:0; box-sizing:border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: var(--text-color); }
+        h1, h2, h3, .brand-font { font-family: 'Poppins', 'Inter', sans-serif; }
+        body {
+            background: var(--bg-color);
+            padding: 2rem 1rem 4rem; min-height: 100vh; display: flex;
+            justify-content: center; transition: background-color 0.3s ease;
+        }
+        .dashboard { max-width: 1400px; width: 100%; }
+        header {
+            margin-bottom: 1.5rem; display: flex; flex-wrap: wrap;
+            justify-content: space-between; align-items: center; gap: 1.2rem;
+        }
+        header h1 { font-size: 2rem; font-weight: 700; color: var(--primary); letter-spacing: -0.5px; }
+        header p { color: var(--text-muted); font-size: 0.98rem; margin-top: 0.2rem; }
+        .header-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        .action-header-btn {
+            background: var(--btn-bg); border: 1px solid var(--btn-border); color: var(--text-color);
+            padding: 0.55rem 1.1rem; border-radius: 10px; font-weight: 600; font-size: 0.85rem;
+            cursor: pointer; transition: all 0.15s ease; box-shadow: var(--shadow-sm);
+        }
+        .action-header-btn:hover { border-color: var(--primary); }
+        .excel-btn-import { background: var(--accent); border-color: var(--accent); color: white; }
+        .excel-btn-export { background: var(--primary); border-color: var(--primary); color: white; }
+        .backup-btn { background: transparent; }
+        #notifyBtn { background: #b3760f; color: white; border-color: #b3760f; }
+        #fileInput, #jsonFileInput { display: none; }
+
+        .reminder-banner {
+            border-left: 5px solid #b3760f; background: color-mix(in srgb, #b3760f 12%, var(--card-bg));
+            padding: 0.9rem 1.4rem; border-radius: 12px; margin-bottom: 1.4rem; display: flex;
+            align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; font-weight: 500;
+        }
+        .reminder-banner.overdue { border-left-color: var(--high); background: color-mix(in srgb, var(--high) 12%, var(--card-bg)); }
+        .reminder-banner button {
+            background: var(--card-bg); border: 1px solid var(--btn-border); padding: 0.35rem 1rem;
+            border-radius: 30px; font-weight: 600; cursor: pointer;
+        }
+
+        .stats-row {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 1rem; margin-bottom: 1.5rem;
+        }
+        .stat-card {
+            background: var(--card-bg); padding: 1.2rem 1.4rem; border-radius: 14px; box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+        }
+        .stat-label { font-size: 0.78rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; color: var(--text-muted); }
+        .stat-value { font-size: 2.1rem; font-weight: 700; margin-top: 0.3rem; display: block; }
+        .stat-card.warn .stat-value { color: var(--high); }
+
+        .card {
+            background: var(--card-bg); border-radius: 18px; padding: 1.6rem;
+            box-shadow: var(--shadow-sm); border: 1px solid var(--border-color); margin-bottom: 1.5rem;
+        }
+        .form-card h2, .table-card h2 {
+            font-size: 1.2rem; font-weight: 700; margin-bottom: 1.2rem; display: flex;
+            align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+        }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1.1rem; align-items: end; }
+        .form-group { display: flex; flex-direction: column; gap: 0.4rem; }
+        .form-group label { font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-muted); }
+        .form-group input, .form-group select {
+            padding: 0.65rem 0.9rem; border: 1.5px solid var(--border-color); border-radius: 10px;
+            font-size: 0.92rem; background: var(--input-bg); color: var(--text-color); transition: all 0.15s;
+        }
+        .form-group input:focus, .form-group select:focus {
+            outline: none; border-color: var(--primary);
+        }
+        .btn-submit {
+            background: var(--primary); color: white; border: none; padding: 0.75rem 1.6rem;
+            border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.15s;
+            width: 100%; white-space: nowrap;
+        }
+        .btn-submit:hover { background: var(--primary-hover); }
+        .btn-danger {
+            background: transparent; color: var(--high); border: 1px solid var(--high); padding: 0.5rem 1rem;
+            border-radius: 30px; font-weight: 600; cursor: pointer; transition: 0.15s; font-size: 0.85rem;
+        }
+        .btn-danger:hover { background: var(--high); color: white; }
+
+        .view-tabs { display: flex; gap: 6px; background: var(--input-bg); padding: 4px; border-radius: 12px; }
+        .view-tab { padding: 0.5rem 1rem; border-radius: 9px; border: none; background: transparent; color: var(--text-muted); font-weight: 600; font-size: 0.85rem; cursor: pointer; }
+        .view-tab.active { background: var(--card-bg); color: var(--primary); box-shadow: var(--shadow-sm); }
+
+        .filter-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+        .filter-row select, .filter-row input[type="text"] {
+            padding: 0.5rem 0.9rem; border-radius: 10px; border: 1px solid var(--border-color);
+            background: var(--input-bg); color: var(--text-color); font-size: 0.85rem;
+        }
+
+        .table-wrapper { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th { padding: 0.8rem; border-bottom: 2px solid var(--border-color); color: var(--text-muted); font-weight: 700; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.3px; }
+        td { padding: 0.8rem; border-bottom: 1px solid var(--border-color); font-size: 0.9rem; }
+        tr.overdue-row td:first-child { border-left: 3px solid var(--high); }
+        .priority-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+        .priority-low .priority-dot { background: var(--low); }
+        .priority-medium .priority-dot { background: var(--medium); }
+        .priority-high .priority-dot { background: var(--high); }
+        .status-select { padding: 0.35rem 0.6rem; border-radius: 8px; border: 1px solid var(--border-color); background: var(--input-bg); font-size: 0.8rem; }
+        .tag-chip { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600; background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); }
+        .due-badge { font-size: 0.8rem; }
+        .due-badge.overdue { color: var(--high); font-weight: 700; }
+        .action-btn { background: transparent; border: none; cursor: pointer; font-size: 1rem; padding: 4px; }
+
+        .board-wrapper { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+        .board-col { background: var(--input-bg); border-radius: 14px; padding: 0.9rem; min-height: 200px; }
+        .board-col h4 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-muted); margin-bottom: 0.8rem; display:flex; justify-content:space-between; }
+        .board-col.drag-over { background: color-mix(in srgb, var(--primary) 10%, var(--input-bg)); }
+        .task-card { background: var(--card-bg); border-radius: 12px; padding: 0.8rem 0.9rem; margin-bottom: 0.7rem; box-shadow: var(--shadow-sm); border: 1px solid var(--border-color); cursor: grab; border-left: 4px solid var(--low); }
+        .task-card.priority-low { border-left-color: var(--low); }
+        .task-card.priority-medium { border-left-color: var(--medium); }
+        .task-card.priority-high { border-left-color: var(--high); }
+        .task-card .t-title { font-weight: 600; font-size: 0.9rem; margin-bottom: 4px; }
+        .task-card .t-meta { font-size: 0.75rem; color: var(--text-muted); display: flex; justify-content: space-between; gap: 8px; }
+        .task-card.dragging { opacity: 0.4; }
+
+        .calendar-nav { display: flex; align-items: center; gap: 12px; margin-bottom: 1rem; }
+        .calendar-nav button { background: var(--input-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 0.4rem 0.7rem; cursor: pointer; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+        .cal-dow { text-align: center; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; padding: 4px 0; }
+        .cal-cell { min-height: 88px; border: 1px solid var(--border-color); border-radius: 10px; padding: 6px; font-size: 0.75rem; background: var(--input-bg); }
+        .cal-cell.today { border-color: var(--primary); border-width: 2px; }
+        .cal-cell.empty { background: transparent; border: none; }
+        .cal-date { font-weight: 700; margin-bottom: 4px; }
+        .cal-chip { background: var(--card-bg); border-radius: 6px; padding: 2px 5px; margin-bottom: 3px; font-size: 0.68rem; cursor: pointer; border-left: 3px solid var(--low); }
+        .cal-chip.priority-medium { border-left-color: var(--medium); }
+        .cal-chip.priority-high { border-left-color: var(--high); }
+        .cal-chip.overdue { color: var(--high); }
+
+        .charts-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 1.3rem; margin-bottom: 1.5rem; }
+        .chart-card h3 { font-size: 0.9rem; font-weight: 700; margin-bottom: 0.9rem; text-transform: uppercase; letter-spacing: 0.3px; color: var(--text-muted); }
+        canvas { max-height: 230px; max-width: 100%; }
+
+        #notifStatus { font-size: 0.75rem; padding: 0.3rem 0.8rem; border-radius: 30px; font-weight: 600; display: none; align-items: center; gap: 6px; }
+        #notifStatus.granted { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); display: flex; }
+        #notifStatus.denied { background: color-mix(in srgb, var(--high) 15%, transparent); color: var(--high); display: flex; }
+
+        .hidden { display: none !important; }
+
+        @media (max-width: 760px) {
+            .board-wrapper { grid-template-columns: 1fr; }
+            .cal-cell { min-height: 60px; }
+        }
+    </style>
+</head>
+<body>
+<div class="dashboard">
+    <header>
+        <div>
+            <h1>TaskFlow</h1>
+            <p>Plan, track and finish what matters &mdash; with due dates, priorities and a board view.</p>
+        </div>
+        <div class="header-actions">
+            <button class="action-header-btn" id="themeToggle">Dark mode</button>
+            <span id="notifStatus"></span>
+            <button class="action-header-btn" id="notifyBtn">Enable alerts</button>
+            <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+            <input type="file" id="jsonFileInput" accept=".json">
+            <button class="action-header-btn backup-btn" id="jsonExportBtn">Backup (.json)</button>
+            <button class="action-header-btn backup-btn" id="jsonImportBtn">Restore</button>
+            <button class="action-header-btn excel-btn-import" id="importExcelBtn">Import Excel</button>
+            <button class="action-header-btn excel-btn-export" id="exportExcelBtn">Export Excel</button>
+        </div>
+    </header>
+
+    <div id="reminderBanner" class="reminder-banner" style="display:none;">
+        <span id="reminderText"></span>
+        <button id="dismissReminder">dismiss</button>
+    </div>
+
+    <div class="stats-row">
+        <div class="stat-card"><span class="stat-label">Today's hours</span><span class="stat-value" id="totalHoursToday">0.0</span></div>
+        <div class="stat-card"><span class="stat-label">Completed</span><span class="stat-value" id="completedCount">0</span></div>
+        <div class="stat-card"><span class="stat-label">In progress</span><span class="stat-value" id="doingCount">0</span></div>
+        <div class="stat-card warn"><span class="stat-label">Overdue</span><span class="stat-value" id="overdueCount">0</span></div>
+    </div>
+
+    <div class="card form-card">
+        <h2 id="formTitle">Add new task</h2>
+        <form id="taskForm">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="taskTitle">Task</label>
+                    <input type="text" id="taskTitle" placeholder="e.g. write report" required>
+                </div>
+                <div class="form-group">
+                    <label for="taskProject">Project / tag</label>
+                    <input type="text" id="taskProject" placeholder="Work, Personal...">
+                </div>
+                <div class="form-group">
+                    <label for="taskPriority">Priority</label>
+                    <select id="taskPriority">
+                        <option value="low">Low</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="high">High</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="taskDueDate">Due date</label>
+                    <input type="date" id="taskDueDate">
+                </div>
+                <div class="form-group">
+                    <label for="taskHours">Hours spent</label>
+                    <input type="number" id="taskHours" step="0.5" min="0" max="24" value="0">
+                </div>
+                <div class="form-group">
+                    <label for="taskRecurrence">Repeats</label>
+                    <select id="taskRecurrence">
+                        <option value="none">Does not repeat</option>
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="taskStatus">Status</label>
+                    <select id="taskStatus">
+                        <option value="todo" selected>To do</option>
+                        <option value="doing">In progress</option>
+                        <option value="done">Done</option>
+                    </select>
+                </div>
+                <div class="form-group" style="display:flex;align-items:flex-end;">
+                    <button type="submit" class="btn-submit" id="submitBtn">Save task</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="charts-row">
+        <div class="card chart-card">
+            <h3>Hours per day (last 7 days)</h3>
+            <canvas id="barChart"></canvas>
+        </div>
+        <div class="card chart-card">
+            <h3>Hours by project</h3>
+            <canvas id="pieChart"></canvas>
+        </div>
+    </div>
+
+    <div class="card table-card">
+        <h2>
+            <span class="view-tabs">
+                <button class="view-tab active" data-view="list">List</button>
+                <button class="view-tab" data-view="board">Board</button>
+                <button class="view-tab" data-view="calendar">Calendar</button>
+            </span>
+            <div class="filter-row">
+                <input type="text" id="searchInput" placeholder="Search tasks..." />
+                <select id="filterProject"><option value="All">All projects</option></select>
+                <select id="filterPriority">
+                    <option value="All">All priorities</option>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                </select>
+                <button id="clearAllBtn" class="btn-danger">Clear all</button>
+            </div>
+        </h2>
+
+        <div id="listView">
+            <div class="table-wrapper">
+                <table id="taskTable">
+                    <thead>
+                        <tr>
+                            <th>Task</th><th>Project</th><th>Priority</th><th>Due</th>
+                            <th>Hours</th><th>Status</th><th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="taskTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="boardView" class="hidden">
+            <div class="board-wrapper">
+                <div class="board-col" data-status="todo"><h4>To do <span id="col-count-todo">0</span></h4><div class="board-list" id="board-todo"></div></div>
+                <div class="board-col" data-status="doing"><h4>In progress <span id="col-count-doing">0</span></h4><div class="board-list" id="board-doing"></div></div>
+                <div class="board-col" data-status="done"><h4>Done <span id="col-count-done">0</span></h4><div class="board-list" id="board-done"></div></div>
+            </div>
+        </div>
+
+        <div id="calendarView" class="hidden">
+            <div class="calendar-nav">
+                <button id="calPrev">&larr;</button>
+                <strong id="calLabel"></strong>
+                <button id="calNext">&rarr;</button>
+            </div>
+            <div class="calendar-grid" id="calendarGrid"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════
+//  SERVICE WORKER REGISTRATION
+// ══════════════════════════════════════════════════
+let swRegistration = null;
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', async () => {
+        try {
+            swRegistration = await navigator.serviceWorker.register('./sw.js');
+            if ('periodicSync' in swRegistration) {
+                const status = await navigator.permissions.query({ name: 'periodic-background-sync' });
+                if (status.state === 'granted') {
+                    await swRegistration.periodicSync.register('check-overdue-tasks', { minInterval: 60 * 60 * 1000 });
+                }
+            }
+            if ('sync' in swRegistration) { await swRegistration.sync.register('check-overdue-tasks'); }
+        } catch (err) { console.error('Service worker failed:', err); }
+    });
+}
+
+// ══════════════════════════════════════════════════
+//  NOTIFICATIONS
+// ══════════════════════════════════════════════════
+const notifyBtn = document.getElementById('notifyBtn');
+const notifStatus = document.getElementById('notifStatus');
+
+function updateNotifUI() {
+    if (!('Notification' in window)) { notifyBtn.style.display = 'none'; return; }
+    if (Notification.permission === 'granted') {
+        notifyBtn.style.display = 'none'; notifStatus.textContent = 'Alerts on'; notifStatus.className = 'granted';
+    } else if (Notification.permission === 'denied') {
+        notifyBtn.style.display = 'none'; notifStatus.textContent = 'Alerts blocked in browser settings'; notifStatus.className = 'denied';
+    } else {
+        notifyBtn.style.display = 'flex'; notifStatus.className = '';
+    }
+}
+notifyBtn.addEventListener('click', async () => {
+    const permission = await Notification.requestPermission();
+    updateNotifUI();
+    if (permission === 'granted') {
+        showNotificationViaSW('Alerts enabled — TaskFlow', "You'll be reminded about overdue tasks, even when this tab is closed.");
+        if (swRegistration && 'periodicSync' in swRegistration) {
+            try { await swRegistration.periodicSync.register('check-overdue-tasks', { minInterval: 60 * 60 * 1000 }); } catch(e) {}
+        }
+        pushSnapshotToSW();
+    }
+});
+function showNotificationViaSW(title, body) {
+    if (Notification.permission !== 'granted') return;
+    if (!swRegistration) { new Notification(title, { body }); return; }
+    navigator.serviceWorker.ready.then(reg => {
+        reg.showNotification(title, { body, vibrate: [200,100,200], tag: 'taskflow-overdue', renotify: true, requireInteraction: true });
+    });
+}
+function pushSnapshotToSW() {
+    if (!navigator.serviceWorker.controller) return;
+    navigator.serviceWorker.controller.postMessage({ type: 'SAVE_TASKS_SNAPSHOT', tasks });
+}
+let notifFiredThisSession = false;
+function notifyOverdue(overdueTasks) {
+    if (Notification.permission !== 'granted' || overdueTasks.length === 0) return;
+    const lines = overdueTasks.slice(0, 8).map(t => `${t.dueDate}: ${t.title}`);
+    showNotificationViaSW(`${overdueTasks.length} overdue task${overdueTasks.length>1?'s':''} — TaskFlow`, lines.join('\n'));
+}
+
+// ══════════════════════════════════════════════════
+//  THEME
+// ══════════════════════════════════════════════════
+const themeToggle = document.getElementById('themeToggle');
+if (localStorage.getItem('theme') === 'dark') { document.body.classList.add('dark-mode'); themeToggle.innerText = 'Light mode'; }
+themeToggle.addEventListener('click', () => {
+    document.body.classList.toggle('dark-mode');
+    const dark = document.body.classList.contains('dark-mode');
+    localStorage.setItem('theme', dark ? 'dark' : 'light');
+    themeToggle.innerText = dark ? 'Light mode' : 'Dark mode';
+    updateCharts();
+});
+
+// ══════════════════════════════════════════════════
+//  DATA MODEL & PERSISTENCE
+// ══════════════════════════════════════════════════
+const STORAGE_KEY = 'taskflow_v2_tasks';
+const BACKUP_KEY = 'taskflow_v2_backup';
+let tasks = [];
+let editingId = null;
+let currentView = 'list';
+let calMonth = new Date().getMonth();
+let calYear = new Date().getFullYear();
+
+function todayStr() { return new Date().toISOString().slice(0,10); }
+
+function loadTasks() {
+    let stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) {
+        const legacy = localStorage.getItem('taskflow_tasks_pro');
+        if (legacy) {
+            try {
+                const old = JSON.parse(legacy);
+                stored = JSON.stringify(old.map(t => ({
+                    id: t.id, title: t.name, project: t.category || 'Other', priority: 'medium',
+                    dueDate: t.date || '', hours: Number(t.hours) || 0, recurrence: 'none',
+                    status: t.status === 'Completed' ? 'done' : 'todo', createdAt: t.date || todayStr()
+                })));
+            } catch(e) { /* ignore */ }
+        }
+    }
+    if (stored) {
+        try { tasks = JSON.parse(stored); }
+        catch (e) {
+            const backup = localStorage.getItem(BACKUP_KEY);
+            try { tasks = backup ? JSON.parse(backup) : []; } catch (e2) { tasks = []; }
+        }
+    } else {
+        tasks = [{ id: Date.now(), title: 'Welcome to TaskFlow — try dragging me to Done', project: 'Getting started', priority: 'low', dueDate: todayStr(), hours: 0, recurrence: 'none', status: 'todo', createdAt: todayStr() }];
+    }
+    saveTasks();
+}
+
+function saveTasks() {
+    try {
+        const existing = localStorage.getItem(STORAGE_KEY);
+        if (existing) localStorage.setItem(BACKUP_KEY, existing);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+    } catch (e) {
+        alert('Could not save — your browser storage may be full. Consider using Backup (.json) to export your data.');
+    }
+    pushSnapshotToSW();
+}
+
+// ══════════════════════════════════════════════════
+//  RECURRENCE
+// ══════════════════════════════════════════════════
+function nextDueDate(dateStr, recurrence) {
+    const d = dateStr ? new Date(dateStr) : new Date();
+    if (recurrence === 'daily') d.setDate(d.getDate() + 1);
+    else if (recurrence === 'weekly') d.setDate(d.getDate() + 7);
+    else if (recurrence === 'monthly') d.setMonth(d.getMonth() + 1);
+    return d.toISOString().slice(0,10);
+}
+function maybeSpawnRecurring(task) {
+    if (task.status === 'done' && task.recurrence && task.recurrence !== 'none') {
+        tasks.push({
+            id: Date.now() + Math.random(),
+            title: task.title, project: task.project, priority: task.priority,
+            dueDate: nextDueDate(task.dueDate, task.recurrence), hours: 0,
+            recurrence: task.recurrence, status: 'todo', createdAt: todayStr()
+        });
+    }
+}
+
+// ══════════════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════════════
+function escapeHtml(unsafe) { return String(unsafe).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[m]); }
+function isOverdue(t) { return t.dueDate && t.dueDate < todayStr() && t.status !== 'done'; }
+function getProjects() { return [...new Set(tasks.map(t => t.project).filter(Boolean))].sort(); }
+function refreshProjectFilter() {
+    const sel = document.getElementById('filterProject');
+    const current = sel.value;
+    sel.innerHTML = '<option value="All">All projects</option>' + getProjects().map(p => `<option value="${escapeAttr(p)}">${escapeHtml(p)}</option>`).join('');
+    sel.value = current && [...sel.options].some(o=>o.value===current) ? current : 'All';
+}
+function escapeAttr(s){ return escapeHtml(s); }
+
+function getFiltered() {
+    let list = [...tasks];
+    const search = document.getElementById('searchInput').value.trim().toLowerCase();
+    const project = document.getElementById('filterProject').value;
+    const priority = document.getElementById('filterPriority').value;
+    if (search) list = list.filter(t => t.title.toLowerCase().includes(search));
+    if (project !== 'All') list = list.filter(t => t.project === project);
+    if (priority !== 'All') list = list.filter(t => t.priority === priority);
+    return list;
+}
+
+// ══════════════════════════════════════════════════
+//  RENDER — SHARED
+// ══════════════════════════════════════════════════
+function renderAll() {
+    refreshProjectFilter();
+    renderStats();
+    renderReminder();
+    if (currentView === 'list') renderList();
+    else if (currentView === 'board') renderBoard();
+    else renderCalendar();
+    updateCharts();
+}
+
+function renderStats() {
+    const today = todayStr();
+    let hoursToday = 0, completed = 0, doing = 0, overdue = 0;
+    tasks.forEach(t => {
+        if (t.createdAt === today || t.dueDate === today) hoursToday += Number(t.hours) || 0;
+        if (t.status === 'done') completed++;
+        else if (t.status === 'doing') doing++;
+        if (isOverdue(t)) overdue++;
+    });
+    document.getElementById('totalHoursToday').innerText = hoursToday.toFixed(1);
+    document.getElementById('completedCount').innerText = completed;
+    document.getElementById('doingCount').innerText = doing;
+    document.getElementById('overdueCount').innerText = overdue;
+}
+
+function renderReminder() {
+    const overdue = tasks.filter(isOverdue);
+    const pendingCount = tasks.filter(t => t.status !== 'done').length;
+    const banner = document.getElementById('reminderBanner');
+    const text = document.getElementById('reminderText');
+    if (overdue.length > 0) {
+        banner.style.display = 'flex'; banner.classList.add('overdue');
+        text.textContent = `${overdue.length} task${overdue.length>1?'s are':' is'} overdue.`;
+        if (!notifFiredThisSession && Notification.permission === 'granted') { notifFiredThisSession = true; notifyOverdue(overdue); }
+    } else if (pendingCount > 0) {
+        banner.style.display = 'flex'; banner.classList.remove('overdue');
+        text.textContent = `${pendingCount} task${pendingCount>1?'s':''} still open.`;
+    } else {
+        banner.style.display = 'none';
+    }
+}
+
+// ══════════════════════════════════════════════════
+//  RENDER — LIST
+// ══════════════════════════════════════════════════
+function renderList() {
+    const tbody = document.getElementById('taskTableBody');
+    tbody.innerHTML = '';
+    const list = getFiltered().sort((a,b) => (a.dueDate||'9999').localeCompare(b.dueDate||'9999'));
+    list.forEach(task => {
+        const overdue = isOverdue(task);
+        const row = document.createElement('tr');
+        if (overdue) row.classList.add('overdue-row');
+        row.innerHTML = `
+            <td><strong>${escapeHtml(task.title)}</strong>${task.recurrence !== 'none' ? ' <span title="repeats '+task.recurrence+'">&#8635;</span>' : ''}</td>
+            <td>${task.project ? `<span class="tag-chip">${escapeHtml(task.project)}</span>` : '-'}</td>
+            <td class="priority-${task.priority}"><span class="priority-dot"></span>${task.priority}</td>
+            <td class="due-badge ${overdue ? 'overdue' : ''}">${task.dueDate || '-'}</td>
+            <td>${Number(task.hours || 0).toFixed(1)}h</td>
+            <td>
+                <select class="status-select" data-id="${task.id}">
+                    <option value="todo" ${task.status==='todo'?'selected':''}>To do</option>
+                    <option value="doing" ${task.status==='doing'?'selected':''}>In progress</option>
+                    <option value="done" ${task.status==='done'?'selected':''}>Done</option>
+                </select>
+            </td>
+            <td>
+                <button class="action-btn edit-btn" data-id="${task.id}" title="edit">&#9998;</button>
+                <button class="action-btn delete-btn" data-id="${task.id}" title="delete">&#128465;</button>
+            </td>`;
+        tbody.appendChild(row);
+    });
+    tbody.querySelectorAll('.status-select').forEach(sel => sel.addEventListener('change', e => {
+        const id = parseFloat(e.target.dataset.id);
+        const task = tasks.find(t => t.id === id);
+        if (task) { task.status = e.target.value; maybeSpawnRecurring(task); saveTasks(); renderAll(); }
+    }));
+    tbody.querySelectorAll('.delete-btn').forEach(btn => btn.addEventListener('click', e => deleteTask(parseFloat(e.target.dataset.id))));
+    tbody.querySelectorAll('.edit-btn').forEach(btn => btn.addEventListener('click', e => editTask(parseFloat(e.target.dataset.id))));
+}
+
+// ══════════════════════════════════════════════════
+//  RENDER — BOARD
+// ══════════════════════════════════════════════════
+function renderBoard() {
+    ['todo','doing','done'].forEach(status => {
+        const col = document.getElementById('board-' + status);
+        const items = getFiltered().filter(t => t.status === status);
+        document.getElementById('col-count-' + status).textContent = items.length;
+        col.innerHTML = items.map(t => `
+            <div class="task-card priority-${t.priority}" draggable="true" data-id="${t.id}">
+                <div class="t-title">${escapeHtml(t.title)}</div>
+                <div class="t-meta">
+                    <span>${t.project ? escapeHtml(t.project) : ''}</span>
+                    <span class="${isOverdue(t) ? 'due-badge overdue' : ''}">${t.dueDate || ''}</span>
+                </div>
+            </div>`).join('');
+    });
+    document.querySelectorAll('.task-card').forEach(card => {
+        card.addEventListener('dragstart', e => { card.classList.add('dragging'); e.dataTransfer.setData('text/plain', card.dataset.id); });
+        card.addEventListener('dragend', () => card.classList.remove('dragging'));
+        card.addEventListener('dblclick', () => editTask(parseFloat(card.dataset.id)));
+    });
+    document.querySelectorAll('.board-col').forEach(col => {
+        col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('drag-over'); });
+        col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
+        col.addEventListener('drop', e => {
+            e.preventDefault(); col.classList.remove('drag-over');
+            const id = parseFloat(e.dataTransfer.getData('text/plain'));
+            const task = tasks.find(t => t.id === id);
+            if (task) { task.status = col.dataset.status; maybeSpawnRecurring(task); saveTasks(); renderAll(); }
+        });
+    });
+}
+
+// ══════════════════════════════════════════════════
+//  RENDER — CALENDAR
+// ══════════════════════════════════════════════════
+function renderCalendar() {
+    const grid = document.getElementById('calendarGrid');
+    const label = document.getElementById('calLabel');
+    const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    label.textContent = `${monthNames[calMonth]} ${calYear}`;
+    const firstDay = new Date(calYear, calMonth, 1).getDay();
+    const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+    const today = todayStr();
+    let html = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => `<div class="cal-dow">${d}</div>`).join('');
+    for (let i = 0; i < firstDay; i++) html += '<div class="cal-cell empty"></div>';
+    const filtered = getFiltered();
+    for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const dayTasks = filtered.filter(t => t.dueDate === dateStr);
+        const chips = dayTasks.slice(0,3).map(t => `<div class="cal-chip priority-${t.priority} ${isOverdue(t)?'overdue':''}" data-id="${t.id}">${escapeHtml(t.title)}</div>`).join('');
+        const more = dayTasks.length > 3 ? `<div class="cal-chip">+${dayTasks.length-3} more</div>` : '';
+        html += `<div class="cal-cell ${dateStr===today?'today':''}"><div class="cal-date">${d}</div>${chips}${more}</div>`;
+    }
+    grid.innerHTML = html;
+    grid.querySelectorAll('.cal-chip[data-id]').forEach(chip => chip.addEventListener('click', () => editTask(parseFloat(chip.dataset.id))));
+}
+document.getElementById('calPrev').addEventListener('click', () => { calMonth--; if (calMonth<0){calMonth=11;calYear--;} renderCalendar(); });
+document.getElementById('calNext').addEventListener('click', () => { calMonth++; if (calMonth>11){calMonth=0;calYear++;} renderCalendar(); });
+
+// ══════════════════════════════════════════════════
+//  VIEW SWITCHING
+// ══════════════════════════════════════════════════
+document.querySelectorAll('.view-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        currentView = tab.dataset.view;
+        document.getElementById('listView').classList.toggle('hidden', currentView !== 'list');
+        document.getElementById('boardView').classList.toggle('hidden', currentView !== 'board');
+        document.getElementById('calendarView').classList.toggle('hidden', currentView !== 'calendar');
+        renderAll();
+    });
+});
+document.getElementById('searchInput').addEventListener('input', renderAll);
+document.getElementById('filterProject').addEventListener('change', renderAll);
+document.getElementById('filterPriority').addEventListener('change', renderAll);
+
+// ══════════════════════════════════════════════════
+//  CRUD
+// ══════════════════════════════════════════════════
+document.getElementById('clearAllBtn').addEventListener('click', () => {
+    if (confirm('Delete ALL tasks? This cannot be undone.')) { tasks = []; saveTasks(); renderAll(); }
+});
+function deleteTask(id) { tasks = tasks.filter(t => t.id !== id); saveTasks(); renderAll(); }
+function editTask(id) {
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+    editingId = id;
+    document.getElementById('taskTitle').value = task.title;
+    document.getElementById('taskProject').value = task.project || '';
+    document.getElementById('taskPriority').value = task.priority || 'medium';
+    document.getElementById('taskDueDate').value = task.dueDate || '';
+    document.getElementById('taskHours').value = task.hours || 0;
+    document.getElementById('taskRecurrence').value = task.recurrence || 'none';
+    document.getElementById('taskStatus').value = task.status || 'todo';
+    document.getElementById('formTitle').textContent = 'Edit task';
+    document.getElementById('submitBtn').textContent = 'Save changes';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function resetForm() {
+    editingId = null;
+    document.getElementById('taskForm').reset();
+    document.getElementById('taskDueDate').value = '';
+    document.getElementById('taskPriority').value = 'medium';
+    document.getElementById('taskStatus').value = 'todo';
+    document.getElementById('formTitle').textContent = 'Add new task';
+    document.getElementById('submitBtn').textContent = 'Save task';
+}
+document.getElementById('taskForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const data = {
+        title: document.getElementById('taskTitle').value.trim(),
+        project: document.getElementById('taskProject').value.trim(),
+        priority: document.getElementById('taskPriority').value,
+        dueDate: document.getElementById('taskDueDate').value,
+        hours: parseFloat(document.getElementById('taskHours').value) || 0,
+        recurrence: document.getElementById('taskRecurrence').value,
+        status: document.getElementById('taskStatus').value,
+    };
+    if (!data.title) return;
+    if (editingId) {
+        const idx = tasks.findIndex(t => t.id === editingId);
+        if (idx > -1) { tasks[idx] = { ...tasks[idx], ...data }; maybeSpawnRecurring(tasks[idx]); }
+    } else {
+        tasks.push({ id: Date.now() + Math.random(), createdAt: todayStr(), ...data });
+    }
+    saveTasks(); renderAll(); resetForm();
+});
+
+// ══════════════════════════════════════════════════
+//  EXCEL IMPORT / EXPORT
+// ══════════════════════════════════════════════════
+document.getElementById('exportExcelBtn').addEventListener('click', function() {
+    const wsData = [['Title','Project','Priority','Due Date','Hours','Recurrence','Status']];
+    tasks.forEach(t => wsData.push([t.title, t.project, t.priority, t.dueDate, t.hours, t.recurrence, t.status]));
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    XLSX.utils.book_append_sheet(wb, ws, 'Tasks');
+    XLSX.writeFile(wb, 'TaskFlow_export.xlsx');
+});
+document.getElementById('importExcelBtn').addEventListener('click', () => document.getElementById('fileInput').click());
+document.getElementById('fileInput').addEventListener('change', function(e) {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+        try {
+            const data = new Uint8Array(ev.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1, defval: '' });
+            const newTasks = [];
+            for (let i = 1; i < rows.length; i++) {
+                const r = rows[i];
+                if (!r[0]) continue;
+                newTasks.push({
+                    id: Date.now() + i + Math.random(),
+                    title: String(r[0]).trim(),
+                    project: String(r[1] || '').trim(),
+                    priority: ['low','medium','high'].includes(String(r[2]).toLowerCase()) ? String(r[2]).toLowerCase() : 'medium',
+                    dueDate: String(r[3] || '').trim(),
+                    hours: parseFloat(r[4]) || 0,
+                    recurrence: ['none','daily','weekly','monthly'].includes(String(r[5]).toLowerCase()) ? String(r[5]).toLowerCase() : 'none',
+                    status: ['todo','doing','done'].includes(String(r[6]).toLowerCase()) ? String(r[6]).toLowerCase() : 'todo',
+                    createdAt: todayStr()
+                });
+            }
+            if (newTasks.length) { tasks = [...tasks, ...newTasks]; saveTasks(); renderAll(); alert(`Imported ${newTasks.length} tasks.`); }
+        } catch(err) { alert('Failed to parse file.'); }
+        document.getElementById('fileInput').value = '';
+    };
+    reader.readAsArrayBuffer(file);
+});
+
+// ══════════════════════════════════════════════════
+//  JSON BACKUP / RESTORE (data-safety net)
+// ══════════════════════════════════════════════════
+document.getElementById('jsonExportBtn').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(tasks, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `taskflow-backup-${todayStr()}.json`; a.click();
+    URL.revokeObjectURL(url);
+});
+document.getElementById('jsonImportBtn').addEventListener('click', () => document.getElementById('jsonFileInput').click());
+document.getElementById('jsonFileInput').addEventListener('change', function(e) {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+        try {
+            const restored = JSON.parse(ev.target.result);
+            if (!Array.isArray(restored)) throw new Error('bad format');
+            if (confirm(`Restore ${restored.length} tasks? This will replace your current data (a backup of the current data is kept).`)) {
+                localStorage.setItem(BACKUP_KEY, JSON.stringify(tasks));
+                tasks = restored; saveTasks(); renderAll();
+            }
+        } catch (err) { alert('That file could not be read as a TaskFlow backup.'); }
+        document.getElementById('jsonFileInput').value = '';
+    };
+    reader.readAsText(file);
+});
+
+document.getElementById('dismissReminder').addEventListener('click', () => {
+    document.getElementById('reminderBanner').style.display = 'none';
+});
+
+// ══════════════════════════════════════════════════
+//  CHARTS
+// ══════════════════════════════════════════════════
+let barChart, pieChart;
+function updateCharts() {
+    const last7Days = [];
+    const today = new Date();
+    for (let i = 6; i >= 0; i--) { const d = new Date(today); d.setDate(d.getDate() - i); last7Days.push(d.toISOString().slice(0,10)); }
+    const hoursPerDay = last7Days.map(date => tasks.filter(t => t.createdAt === date).reduce((s,t) => s + (Number(t.hours)||0), 0));
+    const projects = getProjects().length ? getProjects() : ['General'];
+    const projectData = projects.map(p => tasks.filter(t => (t.project || 'General') === p).reduce((s,t) => s + (Number(t.hours)||0), 0));
+    const textColor = document.body.classList.contains('dark-mode') ? '#eef1f8' : '#1c2434';
+    const palette = ['#4338ca','#0d9488','#b3760f','#b3261e','#6b7690','#7c3aed','#0891b2'];
+
+    if (barChart) barChart.destroy();
+    if (pieChart) pieChart.destroy();
+
+    barChart = new Chart(document.getElementById('barChart'), {
+        type: 'bar',
+        data: { labels: last7Days.map(d => d.slice(5)), datasets: [{ label: 'hours', data: hoursPerDay, backgroundColor: '#4338ca', borderRadius: 6 }] },
+        options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: textColor } }, y: { ticks: { color: textColor } } } }
+    });
+    pieChart = new Chart(document.getElementById('pieChart'), {
+        type: 'pie',
+        data: { labels: projects, datasets: [{ data: projectData, backgroundColor: palette, borderColor: 'transparent' }] },
+        options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: textColor } } } }
+    });
+}
+
+// ══════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('taskDueDate').value = todayStr();
+    updateNotifUI();
+    loadTasks();
+    renderAll();
+});
+</script>
+</body></html>
